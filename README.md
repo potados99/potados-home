@@ -1,1 +1,1 @@
-# potados-home-control
+# potados-home
