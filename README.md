@@ -1,1 +1,1 @@
-# potados-home-server
+# potados-home-control
