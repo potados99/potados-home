@@ -1,12 +1,10 @@
 #include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
 #include <CoapServer.h>
+#include "secured.h"
 
 WiFiUDP udp;
 CoapServer server(udp);
-
-const char* ssid = "*";
-const char* password = "*";
 
 char *myCallback(CoapPacket &packet, IPAddress ip, int port) {
   Serial.println("BGN");
@@ -41,7 +39,7 @@ void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
   
-  WiFi.begin(ssid, password);
+  WiFi.begin(SSID, PASSWORD);
   while (WiFi.status() != WL_CONNECTED)
   {
     delay(500);
