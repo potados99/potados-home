@@ -1,10 +1,22 @@
+#include <pdevice.h>
+
 #include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
 #include <CoapServer.h>
 #include "secured.h"
 
+void buttonClicked();
+
 WiFiUDP udp;
 CoapServer server(udp);
+
+Device MyRelay("MyRelay", 2);
+Button MyButton(0, 1, buttonClicked);
+
+void buttonClicked() {
+  Serial.println("Toggle!");
+  MyRelay.togglePower();
+}
 
 char *myCallback(CoapPacket &packet, IPAddress ip, int port) {
   Serial.println("BGN");
@@ -22,10 +34,20 @@ char *myCallback(CoapPacket &packet, IPAddress ip, int port) {
   memset(reply, 0, 32);
 
   if (methodIsGet) {
-    sprintf(reply, "You want to GET [%s] from me!", msg);
+    sprintf(reply, "Power is %s!", MyRelay.getPower() ? "On" : "Off");
   }
   else {
-    sprintf(reply, "You PUT me [%s]!", msg);
+    if (strcmp(msg, "on") == 0) {
+      MyRelay.setPower(true);
+      sprintf(reply, "Turned On :)");
+    }
+    else if (strcmp(msg, "off") == 0) {
+      MyRelay.setPower(false);
+      sprintf(reply, "Turned Off :(");
+    }
+    else {
+      sprintf(reply, "I don't get it \"%s\"..sorry", msg);
+    }
   }
 
   Serial.print("Reply:");
@@ -55,4 +77,6 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
   server.loop();
+  MyButton.loop();
+  // Serial.println(digitalRead(0));
 }
