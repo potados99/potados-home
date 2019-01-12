@@ -1,9 +1,8 @@
 #include <pdevice.h>
-
 #include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
 #include <CoapServer.h>
-#include "secured.h"
+#include "wifi.h"
 
 void buttonClicked();
 
@@ -14,8 +13,9 @@ Device MyRelay("MyRelay", 2);
 Button MyButton(0, 1, buttonClicked);
 
 void buttonClicked() {
-  Serial.println("Toggle!");
+  Serial.print("Toggle! ");
   MyRelay.togglePower();
+  Serial.println(MyRelay.getPower() ? "Now on." : "Now off.");
 }
 
 char *myCallback(CoapPacket &packet, IPAddress ip, int port) {
@@ -60,13 +60,21 @@ char *myCallback(CoapPacket &packet, IPAddress ip, int port) {
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
-  
-  WiFi.begin(SSID, PASSWORD);
+  delay(500);
+
+
+  if (! WiFi.getAutoConnect()) {
+      WiFi.begin(SSID, PASSWORD); // in wifi.h
+  }
+
+  /*
   while (WiFi.status() != WL_CONNECTED)
   {
     delay(500);
     Serial.print(".");
   }
+  */
+  
   Serial.print("connected.");
   
   server.addResource(myCallback, "pdevice/pwr");
