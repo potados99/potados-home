@@ -1,24 +1,36 @@
-#include <pdevice.h>
-#include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
+#include <ESP8266WiFi.h>
 #include <CoapServer.h>
+#include <pdevice.h>
 #include "wifi.h"
-
-void buttonClicked();
 
 WiFiUDP udp;
 CoapServer server(udp);
 
-Device MyRelay("MyRelay", 2);
-Button MyButton(0, 1, buttonClicked);
+Device myDevice("MyDevice", 2);
+Button myButton(0, HIGH, buttonClicked); /* pin 0, pull-up, callback */
 
-void buttonClicked() {
-  Serial.print("Toggle! ");
-  MyRelay.togglePower();
-  Serial.println(MyRelay.getPower() ? "Now on." : "Now off.");
+void setup() {
+  if (! WiFi.getAutoConnect()) {
+      WiFi.begin(SSID, PASSWORD); /* in wifi.h */
+  }
+
+  server.addResource(light_callback, "light");
+
+  server.start();
 }
 
-char *myCallback(CoapPacket &packet, IPAddress ip, int port) {
+void loop() {
+  server.loop();
+  myButton.loop();
+}
+
+
+void buttonClicked() {
+  myDevice.togglePower();
+}
+
+char *light_callback(CoapPacket &packet, IPAddress ip, int port) {
   Serial.println("BGN");
 
   const char * msg = (const char *)packet.payload ? (const char *)packet.payload : "NULL";
@@ -53,38 +65,6 @@ char *myCallback(CoapPacket &packet, IPAddress ip, int port) {
   Serial.print("Reply:");
   Serial.println(reply);
   Serial.println("END");
-  
+
   return reply;
-}
-
-void setup() {
-  // put your setup code here, to run once:
-  Serial.begin(115200);
-  delay(500);
-
-
-  if (! WiFi.getAutoConnect()) {
-      WiFi.begin(SSID, PASSWORD); // in wifi.h
-  }
-
-  /*
-  while (WiFi.status() != WL_CONNECTED)
-  {
-    delay(500);
-    Serial.print(".");
-  }
-  */
-  
-  Serial.print("connected.");
-  
-  server.addResource(myCallback, "pdevice/pwr");
-  
-  server.start();
-}
-
-void loop() {
-  // put your main code here, to run repeatedly:
-  server.loop();
-  MyButton.loop();
-  // Serial.println(digitalRead(0));
 }
