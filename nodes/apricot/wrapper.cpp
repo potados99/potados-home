@@ -1,63 +1,118 @@
 #include <WiFiUdp.h>
 #include <ESP8266WiFi.h>
 #include <CoapServer.h>
-#include <pdevice.h>
-#include "wifi.h"
+#include <Device.h>
 
+#include "auth.h" /* Wi-Fi ssid and password. */
+
+/**
+ * Send data through this.
+ * CoapServer needs it.
+ */
 WiFiUDP udp;
-CoapServer server(udp);
-Device myLED("MyLED", 2);
 
-char *light_callback(CoapPacket &packet, IPAddress ip, int port);
+/**
+ * The CoAP server.
+ */
+CoapServer server(udp);
+
+/**
+ * Device to control.
+ */
+Device myLED("MyLED", D4);
+
+/**
+ * Callback for "power" resource.
+ */
+callback onPower = [](int coap_method, const char *payload, char *reply) {
+    if (reply == NULL) return;
+
+    String msg(payload);
+    msg.toUpperCase();
+
+    switch (coap_method) {
+
+      case COAP_GET: {
+        sprintf(reply, myLED.getPower() ? "ON" : "OFF");
+        break;
+      }
+
+      case COAP_PUT: {
+        if (payload == NULL) return;
+
+        if (msg == "ON") {
+          myLED.setPower(true);
+          sprintf(reply, "OK");
+        }
+        else if (msg == "OFF") {
+          myLED.setPower(false);
+          sprintf(reply, "OK");
+        }
+        else {
+          sprintf(reply, "FAIL");
+        }
+
+        break;
+      }
+
+    } /* end of switch */
+};
+
+/**
+ * Callback for "brightness" resource.
+ */
+callback onBrightness = [](int coap_method, const char *payload, char *reply) {
+    if (reply == NULL) return;
+
+    String msg(payload);
+    msg.toUpperCase();
+
+    switch (coap_method) {
+
+    case COAP_GET: {
+      sprintf(reply, "%d", myLED.getPWM());
+      break;
+    }
+
+    case COAP_PUT: {
+      if (payload == NULL) return;
+
+      int brightness = msg.toInt();
+      if (brightness == 0) {
+        sprintf(reply, "FAIL");
+        return;
+      }
+
+      myLED.setPWM(brightness);
+      sprintf(reply, "OK");
+
+      break;
+    }
+
+    } /* end of switch */
+};
+
 
 void setup() {
   Serial.begin(115200);
-  
+
+  WiFi.hostname("apricot");
   WiFi.begin(MY_SSID, MY_PASSWORD);
-  
+
   while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
     Serial.print(".");
+    delay(500);
   }
 
-  Serial.println("IP address: ");
+  Serial.print("\nConnected: ");
   Serial.println(WiFi.localIP());
 
-  // pinMode(3, FUNCTION_3);
-
-  server.addResource(light_callback, "LED");
+  server.addResource("power", onPower);
+  server.addResource("brightness", onBrightness);
 
   server.start();
 }
 
 void loop() {
   server.loop();
-}
-
-char *light_callback(CoapPacket &packet, IPAddress ip, int port) {
-
-  const char * msg = (const char *)packet.payload ? (const char *)packet.payload : "NULL";
-  bool methodIsGet = (packet.code == COAP_GET);
-
-  char *reply = (char *)malloc(32);
-  memset(reply, 0, 32);
-
-  if (methodIsGet) {
-    sprintf(reply, "Power is %s!", myLED.getPower() ? "On" : "Off");
-  }
-  else {
-    if (strcmp(msg, "on") == 0) {
-      myLED.setPower(true);
-      sprintf(reply, "Turned On :)");
-    }
-    else if (strcmp(msg, "off") == 0) {
-      myLED.setPower(false);
-      sprintf(reply, "Turned Off :(");
-    }
-    else {
-      sprintf(reply, "I don't get it \"%s\"..sorry", msg);
-    }
-  }
-
-  return reply;
 }
