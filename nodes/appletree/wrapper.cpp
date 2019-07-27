@@ -1,66 +1,31 @@
 #include <WiFiUdp.h>
 #include <ESP8266WiFi.h>
+#include <DNSServer.h>
+#include <ESP8266WebServer.h>
+#include <WiFiManager.h>
+
 #include <CoapServer.h>
 #include <Device.h>
-#include <Wire.h>  // Only needed for Arduino 1.6.5 and earlier
-#include "SSD1306Wire.h"
+#include "oled.h"
 
-#include "auth.h" /* Wi-Fi ssid and password. */
+#include "auth.h"
 
-/**
- * Send data through this.
- * CoapServer needs it.
- */
+WiFiManager wifiManager;
 WiFiUDP udp;
-
-/**
- * The CoAP server.
- */
 CoapServer server(udp);
 
-/**
- * Device to control.
- */
 Device myLight("MyLight", D4);
+OLED disp;
+
+void splash();
+void connectWiFi();
+void showInfo();
+void resetNeeded();
+void (*reset)(void) = 0;
 
 /**
- * Display on the board.
- */
-SSD1306Wire display(0x3c, SDA, SCL, GEOMETRY_128_32);
-
-String currentLine1 = "";
-String currentLine2 = "";
-
-unsigned long currentTextFrom = 0;
-unsigned long currentTextUntil = 0;
-
-unsigned long displayUpdateInterval = 10;
-unsigned long lastDisplayUpdate = 0;
-
-bool textModified = false;
-bool textExpired = true;
-
-/**
- * Display text when it is valid.
- * if the text is expired, it is turned to "".
- */
-void updateDisplay();
-
-/**
- * Register text to be displayed for m milliseconds.
- */
-void showTextFor(String line1, String line2 = "", unsigned long mseconds = 0);
-
-/**
- * Display current status of device.
- * if any texts are on the display(registered by showTextFor),
- * it won't work.
- */
-void showStatus();
-
-/**
- * Callback for "power"
- */
+* Callback for "power"
+*/
 callback onPower = [](int coap_method, const char *payload, char *reply) {
     if (reply == NULL) return;
 
@@ -69,144 +34,159 @@ callback onPower = [](int coap_method, const char *payload, char *reply) {
 
     switch (coap_method) {
 
-      case COAP_GET: {
-        sprintf(reply, myLight.getPower() ? "ON." : "OFF.");
-        showTextFor("CoAP", myLight.getPower() ? "Currently on." : "Currently off.", 2000);
-        break;
-      }
-
-      case COAP_PUT: {
-        if (payload == NULL) return;
-
-        if (msg == "ON") {
-          myLight.setPower(true);
-          sprintf(reply, "OK");
-          showTextFor("CoAP", "Turned on.", 2000);
-        }
-        else if (msg == "OFF") {
-          myLight.setPower(false);
-          sprintf(reply, "OK");
-          showTextFor("CoAP", "Turned off.", 2000);
-        }
-        else {
-          sprintf(reply, "FAIL");
-          showTextFor("CoAP", "Wrong payload.", 2000);
+        case COAP_GET: {
+            sprintf(reply, myLight.getPower() ? "ON." : "OFF.");
+            break;
         }
 
-        break;
-      }
+        case COAP_PUT: {
+            if (payload == NULL) return;
+
+            if (msg == "ON") {
+                myLight.setPower(true);
+
+                disp.forceUnlock()
+                -> clear()
+                -> setFont(disp.bigFont)
+                -> drawStr(0, 0, "ON")
+                -> setFont(disp.defaultFont)
+                -> commit()
+                -> lockFor(1000);
+
+                sprintf(reply, "OK");
+            }
+            else if (msg == "OFF") {
+                myLight.setPower(false);
+
+                disp.forceUnlock()
+                -> clear()
+                -> setFont(disp.bigFont)
+                -> drawStr(0, 0, "OFF")
+                -> setFont(disp.defaultFont)
+                -> commit()
+                -> lockFor(1000);
+
+                sprintf(reply, "OK");
+            }
+            else {
+                sprintf(reply, "FAIL");
+
+                disp.forceUnlock()
+                -> clear()
+                -> setFont(disp.bigFont)
+                -> drawStr(0, 0, "ERROR")
+                -> setFont(disp.defaultFont)
+                -> commit()
+                -> lockFor(1000);
+            }
+
+            break;
+        }
 
     } /* end of switch */
 };
 
 void setup() {
     Serial.begin(115200);
+    disp.begin();
 
-    WiFi.hostname("appletree");
-    WiFi.begin(MY_SSID, MY_PASSWORD);
+    splash();
 
-    while (WiFi.status() != WL_CONNECTED) {
-      Serial.print(".");
-      delay(500);
-    }
+    delay(500);
 
-    showTextFor("Connected:", WiFi.localIP().toString(), 2000);
+    connectWiFi();
 
-    Serial.print("\nConnected: ");
-    Serial.println(WiFi.localIP());
+    delay(2000);
 
     server.addResource("power", onPower);
     server.start();
-
-    display.init();
-    display.flipScreenVertically();
-    display.setFont(ArialMT_Plain_16);
 }
 
 void loop() {
+    showInfo();
+
     server.loop();
-
-    delay(10);
-
-    updateDisplay();
-
-    delay(10);
-
-    showStatus();
-
-    delay(10);
+    disp.loop();
 }
 
-void updateDisplay() {
-    if (textExpired) {
-        return;
-    }
-
-    if (millis() < currentTextUntil) {
-        /**
-         * text is valid.
-         */
-         if (textModified) {
-             display.clear();
-
-             display.setFont(ArialMT_Plain_16);
-             display.drawString(0, 0, currentLine1);
-
-             display.setFont(ArialMT_Plain_10);
-             display.drawString(0, 16, currentLine2);
-
-             display.display();
-             textModified = false;
-         }
-    }
-    else {
-        /**
-         * text is expired. invalidate it.
-         */
-         textExpired = true;
-    }
+void splash() {
+    disp.showMovingTitle("APPLE TREE");
+    delay(500);
+    disp.showMovingTitle("v20190728");
 }
 
-void showTextFor(String line1, String line2, unsigned long mseconds) {
-    currentLine1 = line1;
-    currentLine2 = line2;
+void connectWiFi() {
+    Serial.print("Configuring Wi-Fi");
 
-    textModified = true;
-    textExpired = false;
+    disp.clear()
+    -> setFont(u8g2_font_open_iconic_all_2x_t)
+    -> drawUTF8(0, 2, "\u00f7") /* antena */
+    -> setFont(disp.defaultFont)
+    -> drawStr(20, 2, "Connecting")
+    -> commit();
+
+    WiFi.hostname("appletree");
+    wifiManager.autoConnect("appletree_setup");
 
     /**
-     * if mseconds is 0(default),
-     * do not update duration or lifespan of current text.
+     * Success
      */
-    if (mseconds != 0) {
-        currentTextFrom = millis();
-        currentTextUntil = currentTextFrom + mseconds;
-    }
+    disp.clear()
+    -> setFont(u8g2_font_open_iconic_all_2x_t)
+    -> drawUTF8(0, 6, "\u0073") /* check mark */
+    -> setFont(disp.defaultFont)
+    -> drawStr(20, 0, WiFi.SSID().c_str())
+    -> drawStr(20, 16, WiFi.localIP().toString().c_str())
+    -> commit();
+
+    Serial.print("\nConnected: ");
+    Serial.println(WiFi.localIP());
 }
 
-void showStatus() {
-    /**
-     * do nothing if valid text exists.
-     */
-    if (!textExpired) {
-        return;
+void showInfo() {
+    bool online = (WiFi.status() == WL_CONNECTED);
+
+    disp.clear();
+
+    if (online) {
+        disp.setFont(u8g2_font_open_iconic_all_2x_t)
+        -> drawUTF8(110, 6, "\u00b7"); /* heart */
+    } else {
+        Serial.println("HERE");
+        disp.setFont(u8g2_font_open_iconic_all_2x_t)
+        -> drawUTF8(110, 6, "\u0118"); /* warning mark */
     }
 
-    display.clear();
+    disp.setFont(disp.defaultFont)
+    -> drawStrf(0, 0, "IP: %s", online ? WiFi.localIP().toString().c_str() : "offline")
+    -> drawStrf(0, 16, "Uptime: %d", millis() / 1000)
+    -> commit();
+}
 
-    String status = "normal";
+void resetNeeded() {
+    Serial.println("\nReset needed.\n");
 
-    if (WiFi.status() != WL_CONNECTED) {
-        status = "offline";
+    disp.forceUnlock() -> clear() -> setFont(disp.bigFont);
+
+    bool show = true;
+    int showCount = 0;
+
+    while (true) {
+        disp.clear();
+
+        if (show) {
+            disp.drawStr(0, 0, "RESET");
+        }
+        show = !show;
+
+        disp.commit();
+
+        ++showCount;
+
+        if (showCount > 10) {
+            reset();
+        }
+
+        delay(400);
     }
-
-    // ...
-
-    display.setFont(ArialMT_Plain_16);
-    display.drawString(0, 0, "Status: " + status);
-
-    display.setFont(ArialMT_Plain_10);
-    display.drawString(0, 16, "Uptime: " + String(millis() / 1000));
-
-    display.display();
 }
