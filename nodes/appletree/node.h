@@ -8,6 +8,7 @@
 #include <DNSServer.h>
 #include <ESP8266WebServer.h>
 #include <WiFiManager.h>
+#include <EEPROM.h>
 
 #include <CoapServer.h>
 #include <Device.h>
@@ -50,6 +51,9 @@ private:
     void                resetNeeded();
 
     unsigned long       secs();
+
+    void                increassResetCount();
+    unsigned long       getResetCount();
 
 public:
     Node(String name, int pin): mName(name), mDevice(name, pin), mWiFiManager(), mUdp(), mServer(mUdp), mOled() {}

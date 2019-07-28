@@ -1,6 +1,9 @@
 #include "node.h"
 
 void Node::setup() {
+    EEPROM.begin(4);
+    increassResetCount();
+
     Serial.begin(115200);
     mOled.begin();
 
@@ -48,6 +51,14 @@ void Node::splash() {
     -> clear()
     -> drawStr(0, 0, "Build Date:")
     -> drawStr(0, 16, __DATE__)
+    -> commit();
+
+    delay(1000);
+
+    display()
+    -> clear()
+    -> drawStr(0, 0, "Reset Count:")
+    -> drawStrf(0, 16, "%ld", getResetCount())
     -> commit();
 
     delay(1000);
@@ -187,4 +198,24 @@ unsigned long Node::secs() {
     }
 
     return ((ULONG_MAX / 1000) * rollover) + (ms / 1000);
+}
+
+void Node::increassResetCount() {
+    unsigned long currentResetCount = getResetCount();
+    ++currentResetCount;
+
+    for (unsigned int i = 0; i < sizeof(unsigned long); /* 4 */ ++i) {
+        EEPROM.write(i, (currentResetCount >> (8 * i)) & 0xFF /* byte */);
+    }
+
+    EEPROM.commit();
+}
+
+unsigned long Node::getResetCount() {
+    unsigned long resetCount = 0;
+    for (unsigned int i = 0; i < sizeof(unsigned long); /* 4 */ ++i) {
+        resetCount |= (EEPROM.read(i) << (8 * i));
+    }
+
+    return resetCount;
 }
