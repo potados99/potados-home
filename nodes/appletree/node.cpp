@@ -84,7 +84,48 @@ void Node::connectWiFi() {
 }
 
 void Node::showInfo() {
+    if (millis() - 1000 >= lastUptimeUpdate) {
+        lastUptimeUpdate += 1000;
+    } else {
+        return;
+    }
+
     bool online = (WiFi.status() == WL_CONNECTED);
+    String uptimeString = "";
+
+    unsigned long now = secs(); /* sec */
+
+    unsigned long d = elapsedDays(now);
+    unsigned long h = numberOfHours(now);
+    unsigned long m = numberOfMinutes(now);
+    unsigned long s = numberOfSeconds(now);
+
+    if (d > 9) {
+        uptimeString += d;
+        uptimeString += "d";
+    }
+    else if (d > 0) {
+        uptimeString += d;
+        uptimeString += "d ";
+        uptimeString += h;
+        uptimeString += "h";
+    }
+    else if (h > 0) {
+        uptimeString += h;
+        uptimeString += "h ";
+        uptimeString += m;
+        uptimeString += "m";
+    }
+    else if (m > 0) {
+        uptimeString += m;
+        uptimeString += "m ";
+        uptimeString += s;
+        uptimeString += "s";
+    }
+    else {
+        uptimeString += s;
+        uptimeString += "s";
+    }
 
     display() -> clear();
 
@@ -101,7 +142,7 @@ void Node::showInfo() {
     display()
     -> setFont(NULL)
     -> drawStrf(0, 0, "IP: %s", online ? WiFi.localIP().toString().c_str() : "offline")
-    -> drawStrf(0, 16, "Uptime: %d", millis() / 1000)
+    -> drawStrf(0, 16, "Uptime: %s", uptimeString.c_str())
     -> commit();
 }
 
@@ -131,4 +172,19 @@ void Node::resetNeeded() {
 
         delay(400);
     }
+}
+
+unsigned long Node::secs() {
+    unsigned long ms = millis();
+
+    if (ms > ULONG_HIGH) {
+        nearRollover = true;
+    }
+
+    if (ms < ULONG_LOW && nearRollover) {
+        nearRollover = false;
+        ++rollover;
+    }
+
+    return ((ULONG_MAX / 1000) * rollover) + (ms / 1000);
 }

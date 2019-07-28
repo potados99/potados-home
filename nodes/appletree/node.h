@@ -13,6 +13,20 @@
 #include <Device.h>
 #include "oled.h"
 
+#define ULONG_HIGH    (3000000000UL)
+#define ULONG_LOW     (100000UL)
+
+/* Useful Constants */
+#define SECS_PER_MIN  (60UL)
+#define SECS_PER_HOUR (3600UL)
+#define SECS_PER_DAY  (SECS_PER_HOUR * 24L)
+
+/* Useful Macros for getting elapsed time */
+#define numberOfSeconds(_time_) (_time_ % SECS_PER_MIN)
+#define numberOfMinutes(_time_) ((_time_ / SECS_PER_MIN) % SECS_PER_MIN)
+#define numberOfHours(_time_)   (( _time_ % SECS_PER_DAY) / SECS_PER_HOUR)
+#define elapsedDays(_time_)     ( _time_ / SECS_PER_DAY)
+
 /**
  * Wrapper class for potados-home node.
  */
@@ -26,10 +40,16 @@ private:
     CoapServer          mServer;
     OLED                mOled;
 
+    unsigned long       lastUptimeUpdate = 0;
+    bool                nearRollover = false;
+    int                 rollover = 0;
+
     void                splash();
     void                connectWiFi();
     void                showInfo();
     void                resetNeeded();
+
+    unsigned long       secs();
 
 public:
     Node(String name, int pin): mName(name), mDevice(name, pin), mWiFiManager(), mUdp(), mServer(mUdp), mOled() {}

@@ -15,7 +15,7 @@ void OLED::begin() {
 
 void OLED::loop() {
     if (isLocked) {
-        if (millis() > currentLockPostedTime + currentLockDuration) {
+        if (millis() - currentLockDuration > currentLockPostedTime) {
             isLocked = false;
         }
     }
@@ -64,7 +64,7 @@ OLED *OLED::drawUTF8(int x, int y, const char *str) {
     return this;
 }
 
-OLED *OLED::lockFor(long duration) {
+OLED *OLED::lockFor(unsigned long duration) {
     currentLockPostedTime = millis();
     currentLockDuration = duration;
 
