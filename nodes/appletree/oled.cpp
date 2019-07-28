@@ -52,6 +52,12 @@ OLED *OLED::drawStrf(int x, int y, const char *fmt, ...) {
     return this;
 }
 
+OLED *OLED::drawBig(const char *str) {
+    return setFont(this -> bigFont)
+    -> drawStr(0, 0, str)
+    -> setFont(this -> defaultFont);
+}
+
 OLED *OLED::drawUTF8(int x, int y, const char *str) {
     this->u8g2.drawUTF8(x, y, str);
 
@@ -87,7 +93,9 @@ void OLED::showMovingTitle(const char *title) {
     int steps = getUTF8Width(title) - 128;
 
     for (int i = 0; i < steps; ++i) {
-        clear() -> drawStr(-i, 0, title) -> commit();
+        clear()
+        -> drawStr(-i, 0, title)
+        -> commit();
     }
 
     setFont(defaultFont);

@@ -1,4 +1,5 @@
 #ifndef oled_h
+#define oled_h
 
 #include <Arduino.h>
 #include <Wire.h>
@@ -39,6 +40,7 @@ public:
     OLED *setFont(const uint8_t *font);
     OLED *drawStr(int x, int y, const char *str);
     OLED *drawStrf(int x, int y, const char *fmt, ...);
+    OLED *drawBig(const char *str);
     OLED *drawUTF8(int x, int y, const char *str);
     OLED *lockFor(long duration);
     OLED *forceUnlock();
