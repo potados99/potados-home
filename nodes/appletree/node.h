@@ -41,7 +41,6 @@ private:
     CoapServer          mServer;
     OLED                mOled;
 
-    unsigned long       lastUptimeUpdate = 0;
     bool                nearRollover = false;
     int                 rollover = 0;
 

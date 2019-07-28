@@ -95,12 +95,6 @@ void Node::connectWiFi() {
 }
 
 void Node::showInfo() {
-    if (millis() - 1000 >= lastUptimeUpdate) {
-        lastUptimeUpdate += 1000;
-    } else {
-        return;
-    }
-
     bool online = (WiFi.status() == WL_CONNECTED);
     String uptimeString = "";
 
