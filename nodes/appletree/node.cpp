@@ -5,8 +5,8 @@ void Node::setup() {
     mOled.begin();
 
     splash();
-    delay(500);
     connectWiFi();
+
     delay(2000);
 
     mServer.start();
@@ -33,17 +33,24 @@ Device *Node::device() {
 
 
 void Node::splash() {
-    display()
-    -> clear()
-    -> drawBig("POTADOS")
-    -> commit();
-
-    delay(500);
+    String nameInUpperCase = String(mName);
+    nameInUpperCase.toUpperCase();
 
     display()
     -> clear()
-    -> drawBig("v0.1.0")
+    -> drawStr(0, 0, "Name:")
+    -> drawStr(0, 16, nameInUpperCase.c_str())
     -> commit();
+
+    delay(1000);
+
+    display()
+    -> clear()
+    -> drawStr(0, 0, "Build Date:")
+    -> drawStr(0, 16, __DATE__)
+    -> commit();
+
+    delay(1000);
 }
 
 void Node::connectWiFi() {
@@ -58,7 +65,7 @@ void Node::connectWiFi() {
     -> commit();
 
     WiFi.hostname(mName);
-    mWiFiManager.autoConnect((mName + "_setup").c_str());
+    mWiFiManager.autoConnect((mName + "_setup").c_str(), "potados");
 
     /**
      * Success

@@ -62,8 +62,9 @@ callback onPower = [](int coap_method, const char *payload, char *reply) {
 };
 
 void setup() {
-    appleTree.addResource("power", onPower);
     appleTree.setup();
+
+    appleTree.addResource("power", onPower);
 }
 
 void loop() {
