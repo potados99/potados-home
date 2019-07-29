@@ -147,26 +147,25 @@ void Node::showInfo() {
         -> drawUTF8(110, 6, "\u0118"); /* warning mark */
     }
 
-    display()
-    -> setFont(NULL)
-    -> drawStrf(0, 0, "IP: %s", online ? WiFi.localIP().toString().c_str() : "offline")
-    -> drawStrf(0, 16, "Uptime: %s", uptimeString.c_str())
-    ->drawHLine(barLocation, 31, 32)
-    -> commit();
-
-    unsigned long ms = millis();
-    /* if over 128 */
-    if (barLocation & 0x10000000) {
+    if (barLocation > 128) {
         /* out of screen */
-        if (ms - lastUpdate > 1000) {
+        if (s != lastUpdate) {
+            /* over a second elapsed */
             barLocation = -32;
-            lastUpdate  = ms;
+            lastUpdate = s;
         }
     }
     else {
         /* in screen */
         barLocation += 6;
     }
+
+    display()
+    -> setFont(NULL)
+    -> drawStrf(0, 0, "IP: %s", online ? WiFi.localIP().toString().c_str() : "offline")
+    -> drawStrf(0, 16, "Uptime: %s", uptimeString.c_str())
+    -> drawHLine(barLocation, 31, 32)
+    -> commit();
 }
 
 void Node::resetNeeded() {
