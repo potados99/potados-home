@@ -5,9 +5,6 @@ Node appleTree("appletree", D4);
 callback onPower = [](int coap_method, const char *payload, char *reply) {
     if (reply == NULL) return;
 
-    String msg(payload);
-    msg.toUpperCase();
-
     switch (coap_method) {
 
         case COAP_GET: {
@@ -17,6 +14,12 @@ callback onPower = [](int coap_method, const char *payload, char *reply) {
 
         case COAP_PUT: {
             if (payload == NULL) return;
+
+            Serial.println("payload:");
+            Serial.println(payload);
+
+            String msg(payload);
+            msg.toUpperCase();
 
             if (msg == "ON") {
                 appleTree.device()

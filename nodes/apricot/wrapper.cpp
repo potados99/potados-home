@@ -1,118 +1,129 @@
-#include <WiFiUdp.h>
-#include <ESP8266WiFi.h>
-#include <CoapServer.h>
-#include <Device.h>
+#include "node.h"
 
-#include "auth.h" /* Wi-Fi ssid and password. */
+Node apricot("apricot", D4);
 
-/**
- * Send data through this.
- * CoapServer needs it.
- */
-WiFiUDP udp;
-
-/**
- * The CoAP server.
- */
-CoapServer server(udp);
-
-/**
- * Device to control.
- */
-Device myLED("MyLED", D4);
-
-/**
- * Callback for "power" resource.
- */
 callback onPower = [](int coap_method, const char *payload, char *reply) {
     if (reply == NULL) return;
 
-    String msg(payload);
-    msg.toUpperCase();
-
     switch (coap_method) {
 
-      case COAP_GET: {
-        sprintf(reply, myLED.getPower() ? "ON" : "OFF");
-        break;
-      }
-
-      case COAP_PUT: {
-        if (payload == NULL) return;
-
-        if (msg == "ON") {
-          myLED.setPower(true);
-          sprintf(reply, "OK");
-        }
-        else if (msg == "OFF") {
-          myLED.setPower(false);
-          sprintf(reply, "OK");
-        }
-        else {
-          sprintf(reply, "FAIL");
+        case COAP_GET: {
+            sprintf(reply, apricot.device() -> getPower() ? "ON" : "OFF");
+            break;
         }
 
-        break;
-      }
+        case COAP_PUT: {
+            if (payload == NULL) return;
+
+            Serial.println("payload:");
+            Serial.println(payload);
+
+            String msg(payload);
+            msg.toUpperCase();
+
+            if (msg == "ON") {
+                apricot.device()
+                -> setPower(true);
+
+                apricot.display()
+                -> forceUnlock()
+                -> clear()
+                -> drawBig("ON")
+                -> commit()
+                -> lockFor(1000);
+
+                sprintf(reply, "OK");
+            }
+            else if (msg == "OFF") {
+                apricot.device()
+                -> setPower(false);
+
+                apricot.display()
+                -> forceUnlock()
+                -> clear()
+                -> drawBig("OFF")
+                -> commit()
+                -> lockFor(1000);
+
+                sprintf(reply, "OK");
+            }
+            else {
+                sprintf(reply, "FAIL");
+
+                apricot.display()
+                -> forceUnlock()
+                -> clear()
+                -> drawBig("ERROR")
+                -> commit()
+                -> lockFor(1000);
+            }
+
+            break;
+        }
 
     } /* end of switch */
 };
-
-/**
- * Callback for "brightness" resource.
- */
 callback onBrightness = [](int coap_method, const char *payload, char *reply) {
     if (reply == NULL) return;
 
-    String msg(payload);
-    msg.toUpperCase();
-
     switch (coap_method) {
 
-    case COAP_GET: {
-      sprintf(reply, "%d", myLED.getPWM());
-      break;
-    }
+        case COAP_GET: {
+            sprintf(reply, "%d", apricot.device() -> getPWM());
+            break;
+        }
 
-    case COAP_PUT: {
-      if (payload == NULL) return;
+        case COAP_PUT: {
+            if (payload == NULL) return;
 
-      int brightness = msg.toInt();
-      if (brightness == 0) {
-        sprintf(reply, "FAIL");
-        return;
-      }
+            Serial.println("payload:");
+            Serial.println(payload);
 
-      myLED.setPWM(brightness);
-      sprintf(reply, "OK");
+            char *end = NULL;
+            long pwm = strtol(payload, &end, 10);
 
-      break;
-    }
+            /**
+             * All number, not empty, in range.
+             */
+            bool success = (*end == '\0' && end != payload && pwm >= 0 && pwm <= 100);
+
+            if (success) {
+                apricot.device()
+                -> setPWM((uint8_t)pwm);
+
+                apricot.display()
+                -> forceUnlock()
+                -> clear()
+                -> drawBig(String(pwm).c_str())
+                -> commit()
+                -> lockFor(1000);
+
+                sprintf(reply, "OK");
+            }
+            else {
+                sprintf(reply, "FAIL");
+
+                apricot.display()
+                -> forceUnlock()
+                -> clear()
+                -> drawBig("ERROR")
+                -> commit()
+                -> lockFor(1000);
+            }
+
+            break;
+        }
 
     } /* end of switch */
 };
 
-
 void setup() {
-  Serial.begin(115200);
+    apricot.setup();
 
-  WiFi.hostname("apricot");
-  WiFi.begin(MY_SSID, MY_PASSWORD);
-
-  while (WiFi.status() != WL_CONNECTED) {
-    Serial.print(".");
-    delay(500);
-  }
-
-  Serial.print("\nConnected: ");
-  Serial.println(WiFi.localIP());
-
-  server.addResource("power", onPower);
-  server.addResource("brightness", onBrightness);
-
-  server.start();
+    apricot.addResource("power", onPower);
+    apricot.addResource("brightness", onBrightness);
 }
 
 void loop() {
-  server.loop();
+    apricot.loop();
 }
