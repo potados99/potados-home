@@ -1,6 +1,6 @@
 #include "node.h"
 
-Node appleTree("appletree", D4);
+Node appleTree("appletree", D2);
 
 callback onPower = [](int coap_method, const char *payload, char *reply) {
     if (reply == NULL) return;

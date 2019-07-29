@@ -1,6 +1,6 @@
 #include "node.h"
 
-Node apricot("apricot", D4);
+Node apricot("apricot", D2);
 
 callback onPower = [](int coap_method, const char *payload, char *reply) {
     if (reply == NULL) return;
