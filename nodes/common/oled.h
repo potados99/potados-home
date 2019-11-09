@@ -10,9 +10,9 @@
 class OLED {
 private:
     /**
-     * Heltec WiFi kit 8
+     * 128x64 SPI 6pin
      */
-    U8G2_SSD1306_128X32_UNIVISION_F_HW_I2C u8g2;
+    U8G2_SSD1306_128X64_NONAME_F_4W_HW_SPI u8g2;
 
     bool                    isLocked = false;
     unsigned long           currentLockPostedTime = 0;
@@ -22,7 +22,7 @@ public:
     const uint8_t           *defaultFont = u8g2_font_7x14_tf;
     const uint8_t           *bigFont = u8g2_font_logisoso32_tf;
 
-    OLED(): u8g2(U8G2_R0, /* reset=*/ 16, /* clock=*/ 5, /* data=*/ 4) {}
+    OLED(): u8g2(U8G2_R0, /* cs=*/ D8, /* dc=*/ D4, /* reset=*/ D3) {}
 
     /**
      * Prepare display.
