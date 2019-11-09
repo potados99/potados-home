@@ -1,6 +1,6 @@
 #include "node.h"
 
-Node apricot("apricot", D1);
+Node apricot("apricot", D2);
 
 callback onPower = [](int coap_method, const char *payload, char *reply) {
     if (reply == NULL) return;
@@ -120,8 +120,8 @@ callback onBrightness = [](int coap_method, const char *payload, char *reply) {
 void setup() {
     apricot.setup();
 
-    apricot.addResource("power", onPower);
-    apricot.addResource("brightness", onBrightness);
+    apricot.addResource("pwr", onPower);
+    apricot.addResource("brt", onBrightness);
 }
 
 void loop() {
